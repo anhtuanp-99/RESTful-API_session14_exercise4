@@ -1,8 +1,11 @@
 package com.tuan.employee.security.jwt;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import jakarta.validation.Valid;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Value;
@@ -95,17 +98,11 @@ public class JwtProvider {
      * - Chưa hết hạn (exp > current time)
      * - Đúng định dạng JWT
      */
-    public boolean validateToken(String token) {
-        try {
-            Jwts.parser()
-                    .verifyWith(getSigningKey())
-                    .build()
-                    .parseSignedClaims(token);
-            return true;
-        } catch (Exception e) {
-            // ExpiredJwtException, MalformedJwtException, SignatureException...
-            return false;
-        }
+    public void validateToken(String token) throws ExpiredJwtException, MalformedJwtException, SignatureException {
+        Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token);
     }
 }
 

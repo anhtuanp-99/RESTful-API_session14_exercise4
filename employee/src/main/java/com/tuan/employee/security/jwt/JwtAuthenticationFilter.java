@@ -21,6 +21,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
@@ -46,22 +47,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // 2. Nếu có token, validate và set authentication
             if (StringUtils.hasText(token)) {
-                // Nếu token hợp lệ, set authentication
-                if (jwtProvider.validateToken(token)) {
-                    String username = jwtProvider.getUsernameFromToken(token);
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
-                } else {
-                    // Token không hợp lệ (sai chữ ký, hết hạn, v.v.) -> sẽ bị catch ở dưới
-                    // Nhưng validateToken() đã bắt exception bên trong và trả false, nên ta cần xử lý riêng.
-                    // Cách tốt: để validateToken() ném exception cụ thể để bắt.
-                }
+                // Validate token – sẽ ném exception nếu lỗi
+                jwtProvider.validateToken(token);
+
+                String username = jwtProvider.getUsernameFromToken(token);
+                UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authentication);
             }
 
-            // Tiếp tục filter chain
+            // Tiếp tục filter chain nếu token hợp lệ hoặc không có token (sẽ bị entry point xử lý)
             filterChain.doFilter(request, response);
 
         } catch (ExpiredJwtException ex) {
@@ -87,7 +85,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
 
-        Map<String, Object> body = new HashMap<>();
+        Map<String, Object> body = new LinkedHashMap<>();
         body.put("status", status);
         body.put("error", "Unauthorized");
         body.put("message", message);
